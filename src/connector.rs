@@ -10,7 +10,7 @@ use std::str;
 pub struct Connector{
     address : String,
     connection : Option<TcpStream>,
-    onMsg : mpsc::Sender<String>,
+    on_msg : mpsc::Sender<String>,
 }
 
 pub struct Wrapper{
@@ -20,14 +20,19 @@ pub struct Wrapper{
 
 
 impl Connector{
-    pub fn new(address : String,onMsg : mpsc::Sender<String>) -> Connector{
-        Connector {address,connection : None,onMsg}
+    pub fn new(address : String,on_msg : mpsc::Sender<String>) -> Connector{
+        Connector {address,connection : None,on_msg}
     }
 
     pub fn connect(&mut self){
         let add = self.address.as_str();
-        let con = TcpStream::connect(add).unwrap();
-        self.connection = Some(con);
+
+        if let Ok(con) = TcpStream::connect(add) {
+            self.connection = Some(con);
+        }else{
+            println!("Cant connect");
+        }
+        
     }
 
     pub fn listen(&mut self){
@@ -42,7 +47,9 @@ impl Connector{
             match ptr.read(&mut data){
                 Ok(_s) => {
                         let st =  str::from_utf8(&data).unwrap();
-                        self.onMsg.send(String::from(st));
+                        if let Ok(_) = self.on_msg.send(String::from(st)){
+
+                        }
                     }
                 _ => (),
             }
@@ -57,10 +64,11 @@ impl Wrapper{
         Wrapper {inner : Arc::new(Mutex::new(Connector::new(address,onMsg)))} 
     }
     pub fn start(&mut self){
-        let mut local_self = self.inner.clone();
+        let local_self = self.inner.clone();
 
         thread::spawn(move || {
-            let l = local_self.lock().unwrap().listen();
+            local_self.lock().unwrap().connect();
+            local_self.lock().unwrap().listen();
         });
     }
 }
