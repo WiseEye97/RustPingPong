@@ -37,7 +37,7 @@ impl Connector{
                 Ok(_s) => {
                         let st =  str::from_utf8(&data).unwrap();
                         if let Ok(_) = self.on_msg.send(String::from(st)){
-
+                            
                         }
                     }
                 _ => (),

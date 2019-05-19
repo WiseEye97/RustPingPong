@@ -9,17 +9,20 @@ extern crate serde_json;
 use piston_window::*;
 use piston_window::types::Color;
 use std::io::{Read,Write,self, BufRead};
+use std::sync::{Arc,Mutex};
 use std::sync::mpsc;
 use std::net::{TcpStream};
 
 use crate::connector::*;
 use crate::types::*;
 use crate::sender::*;
+use crate::game::{Game,Side};
 
 mod connector;
 mod types;
 mod sender;
-
+mod game;
+mod serverListener;
 
 
 fn createTcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Receiver<String>) -> Option<(Wrapper,WrapperSender)> {
@@ -35,9 +38,7 @@ fn createTcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Rece
 
 fn main() {
 
-    let mut tst = TcpMessage::<Pt>::new(String::from("tp"),Pt::new());
-
-    println!("msg -> {}", tst.serialize());
+    let mut game_obj : Arc<Mutex<Game>> = Arc::new(Mutex::new(Game::dummy()));
 
     let mut window: PistonWindow =
         WindowSettings::new("Hello Piston!", [640, 480])
@@ -65,7 +66,7 @@ fn main() {
         println!("message send!");
     }
     
-
+    
     while let Some(event) = window.next(){
 
         if let Some(Button::Keyboard(key)) = event.press_args() {

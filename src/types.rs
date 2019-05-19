@@ -20,6 +20,28 @@ pub struct NameRequest{
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct GameInit{
+    pub side : String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TcpInMessage{
+    pub tp : String,
+    body: serde_json::Value,
+}
+
+impl TcpInMessage{
+    pub fn get_type(message : String) -> TcpInMessage{
+        let my_struct: TcpInMessage = serde_json::from_str(&message).unwrap();
+        my_struct
+    }
+    pub fn get_body<T>(mess : TcpInMessage) -> T where for<'de> T: serde::Deserialize<'de> {
+        let x: T = serde_json::from_value(mess.body).unwrap();
+        x
+    } 
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct TcpMessage<T: serde::Serialize>{
     tp : String,
     content : T,
@@ -33,6 +55,7 @@ impl <T> TcpMessage<T> where T: serde::Serialize {
     pub fn new(tp : String,content : T) -> TcpMessage::<T>{
         TcpMessage::<T> {tp,content}
     }
+    
 }
 
 
