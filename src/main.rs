@@ -16,18 +16,21 @@ use std::net::{TcpStream};
 use crate::connector::*;
 use crate::types::*;
 use crate::sender::*;
-use crate::game::{Game,Side};
+use crate::game::{Game};
+use crate::server_listener::ServerListener;
+use crate::drawing::{draw_game};
 
 mod connector;
 mod types;
 mod sender;
 mod game;
-mod serverListener;
+mod server_listener;
+mod drawing;
 
 
-fn createTcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Receiver<String>) -> Option<(Wrapper,WrapperSender)> {
-    if let Ok(mut con) = TcpStream::connect(address) {
-            let mut cloned = con.try_clone().unwrap();
+fn create_tcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Receiver<String>) -> Option<(Wrapper,WrapperSender)> {
+    if let Ok(con) = TcpStream::connect(address) {
+            let cloned = con.try_clone().unwrap();
             Some((Wrapper::new(con,on_msg),WrapperSender::new(cloned,on_send)))
             
     }else{
@@ -36,52 +39,70 @@ fn createTcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Rece
     }
 }
 
-fn main() {
 
-    let mut game_obj : Arc<Mutex<Game>> = Arc::new(Mutex::new(Game::dummy()));
+
+pub fn run_piston(game : Arc<Mutex<Game>>,sender : mpsc::Sender<String>){
+    const BACK_COLOR: Color = [0.5, 0.5, 0.5, 1.0];
 
     let mut window: PistonWindow =
-        WindowSettings::new("Hello Piston!", [640, 480])
+        WindowSettings::new("Hello Piston!", [1000, 800])
         .exit_on_esc(true).build().unwrap();
 
+    while let Some(event) = window.next(){
+        if let Some(Button::Keyboard(key)) = event.press_args() {
+           
+        }
+
+        window.draw_2d(&event, |c, g| {
+            clear(BACK_COLOR, g);
+            let mtx = game.lock().unwrap();
+            draw_game(&mtx, &c,g);
+        });    
+
+        event.update(|arg| {
+
+        });
+    }
+}
+
+fn main() {
+    //Main game struct for controlling Game , initially ininitialized with dummy values
+    let game_obj : Arc<Mutex<Game>> = Arc::new(Mutex::new(Game::dummy()));
+
+    //Channel for messages from server
     let (tx,rx) = mpsc::channel::<String>();
+
+    //Channel for messages to server
     let (tx2,rx2) = mpsc::channel::<String>();
 
-    let (mut wrapper,mut wrapper_sender) = createTcp(String::from("127.0.0.1:7878"),tx,rx2).unwrap();
+    //Controller for messagess from server
+    let mut srv_listener = ServerListener::new(game_obj.clone(), rx);
+    //start listening
+    srv_listener.start();
 
+    //connections to server one for sending one for recieving
+    let (mut wrapper,mut wrapper_sender) = create_tcp(String::from("127.0.0.1:7878"),tx,rx2).unwrap();
+
+    //start listening
     wrapper.start();
     wrapper_sender.start();
 
+
+    //get username from stdin
     println!("Write your username:");
 
     let mut line = String::new();
     let stdin = io::stdin();
     stdin.lock().read_line(&mut line).unwrap();
 
-
-    let mut name_req = NameRequest::new(String::from(line.trim_end()));
+    //Contruct message and send to the server
+    let name_req = NameRequest::new(String::from(line.trim_end()));
     let mut msg = TcpMessage::<NameRequest>::new(String::from("register"),name_req);
 
-    if let Ok(x) = tx2.send(msg.serialize()){
-        println!("message send!");
-    }
+
+    tx2.send(msg.serialize()).unwrap();
     
-    
-    while let Some(event) = window.next(){
-
-        if let Some(Button::Keyboard(key)) = event.press_args() {
-           
-        }
-        
-        window.draw_2d(&event, |c, g| {
-                
-        });
-
-        event.update(|arg| {
-              
-        });
-
-    }
-
+    //Piston Window
+    run_piston(game_obj.clone(),tx2);
 
 }

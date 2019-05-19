@@ -22,14 +22,14 @@ impl InnerListener{
                         "game_init" => {
                             let body = TcpInMessage::get_body::<GameInit>(encoded);
                             if let Ok(mut foo) = self.game.lock() {
-                                let (clientSide,oppSide) =
+                                let (client_side,opp_side) =
                                     match body.side.as_ref(){
                                         "Up" => {
                                             (Side::Up,Side::Down)
                                         },
                                         _ => {(Side::Down,Side::Up)}
                                     };
-                                foo.init(clientSide,oppSide,500,500);
+                                foo.init(client_side,opp_side,500,500,crate::game::Dimensions {width : 50,height : 10});
                             }
                         },
                         _ => {

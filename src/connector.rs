@@ -1,5 +1,5 @@
-use std::net::{TcpListener, TcpStream,Shutdown};
-use std::io::{Read, Write};
+use std::net::{ TcpStream};
+use std::io::{Read};
 
 use std::thread;
 use std::sync::{Mutex, Arc};
@@ -26,7 +26,6 @@ impl Connector{
 
     pub fn listen(&mut self){
         
-        let mut buffer = String::new();
        
         let mut ptr = &self.connection;
 
@@ -35,7 +34,20 @@ impl Connector{
 
             match ptr.read(&mut data){
                 Ok(_s) => {
-                        let st =  str::from_utf8(&data).unwrap();
+                        let mut last = 0;
+
+                        for b in data.iter(){
+                            if *b == (0 as u8){
+                                break;
+                            }
+                            last += 1;
+                        }
+
+                       
+                        let st =  str::from_utf8(&data[0..last]).unwrap();
+
+                        println!("Message from server -> {}",st);
+
                         if let Ok(_) = self.on_msg.send(String::from(st)){
                             
                         }
@@ -50,8 +62,8 @@ impl Connector{
 }
 
 impl Wrapper{
-    pub fn new(stream : TcpStream,onMsg : mpsc::Sender<String>) -> Wrapper{
-        Wrapper {inner : Arc::new(Mutex::new(Connector::new(stream,onMsg)))} 
+    pub fn new(stream : TcpStream,on_msg : mpsc::Sender<String>) -> Wrapper{
+        Wrapper {inner : Arc::new(Mutex::new(Connector::new(stream,on_msg)))} 
     }
     pub fn start(&mut self){
         let local_self = self.inner.clone();
