@@ -1,11 +1,9 @@
-use std::net::{TcpListener, TcpStream,Shutdown};
-use std::io::{Read, Write};
+use std::net::{ TcpStream};
+use std::io::{Write};
 
 use std::thread;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc;
-use std::str;
-
 
 
 pub struct ErlangSender{

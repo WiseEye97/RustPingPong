@@ -8,7 +8,7 @@ extern crate serde_json;
 
 use piston_window::*;
 use piston_window::types::Color;
-use std::io::{Read,Write,self, BufRead};
+use std::io::{self, BufRead};
 use std::sync::{Arc,Mutex};
 use std::sync::mpsc;
 use std::net::{TcpStream};
@@ -19,6 +19,7 @@ use crate::sender::*;
 use crate::game::{Game};
 use crate::server_listener::ServerListener;
 use crate::drawing::{draw_game};
+use crate::config::*;
 
 mod connector;
 mod types;
@@ -26,6 +27,7 @@ mod sender;
 mod game;
 mod server_listener;
 mod drawing;
+mod config;
 
 
 fn create_tcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Receiver<String>) -> Option<(Wrapper,WrapperSender)> {
@@ -40,9 +42,20 @@ fn create_tcp(address : String,on_msg : mpsc::Sender<String>,on_send : mpsc::Rec
 }
 
 
+fn get_vector(key : Key) -> Option<(i32,i32)> {
+    match key{
+        Key::Left => Some((-MOVE_STEP,0)),
+        Key::Right => Some((MOVE_STEP,0)), 
+        Key::Up => Some((0,-MOVE_STEP)),
+        Key::Down => Some((0,MOVE_STEP)),
+        _ => None 
+    }
+}
 
-pub fn run_piston(game : Arc<Mutex<Game>>,sender : mpsc::Sender<String>){
+fn run_piston(game : Arc<Mutex<Game>>,sender : mpsc::Sender<String>){
     const BACK_COLOR: Color = [0.5, 0.5, 0.5, 1.0];
+
+    let mut elapsed = 0.0;
 
     let mut window: PistonWindow =
         WindowSettings::new("Hello Piston!", [1000, 800])
@@ -50,7 +63,13 @@ pub fn run_piston(game : Arc<Mutex<Game>>,sender : mpsc::Sender<String>){
 
     while let Some(event) = window.next(){
         if let Some(Button::Keyboard(key)) = event.press_args() {
-           
+           if let Some(vctor) = get_vector(key) {
+               if let Ok(mut g) = game.lock() {
+                   if g.client.move_player(vctor){
+                       sender.send(MoveRequest::create_to_json(g.client.pos)).unwrap();
+                   }
+               }
+           }
         }
 
         window.draw_2d(&event, |c, g| {
@@ -60,7 +79,11 @@ pub fn run_piston(game : Arc<Mutex<Game>>,sender : mpsc::Sender<String>){
         });    
 
         event.update(|arg| {
-
+            elapsed += arg.dt;
+            if elapsed > crate::config::UPDATE_TIME {
+                game.lock().unwrap().move_ball();
+                elapsed = 0.0;
+            }
         });
     }
 }

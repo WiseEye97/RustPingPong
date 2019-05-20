@@ -17,6 +17,35 @@ pub struct Wrapper{
     inner: Arc<Mutex<Connector>>
 }
 
+type ParsedObj = String;
+
+fn json_pre_parser(s : &String) -> (Vec<ParsedObj>,String){
+
+    let mut level = 0;
+
+    let mut current = String::new();
+    let mut parsed : Vec<ParsedObj> = Vec::new();
+
+    for c in s.chars(){
+        match c{
+            '{' => level += 1,
+            '}' => level -= 1,
+            _ if level == 0 => {
+                return (parsed,String::new());        
+            },
+            _ => (),
+        };
+        
+        current.push(c);
+ 
+        if level == 0{
+            parsed.push(current.clone());
+            current.clear();
+        }        
+    }
+    
+    (parsed,current)
+}
 
 
 impl Connector{
@@ -29,28 +58,27 @@ impl Connector{
        
         let mut ptr = &self.connection;
 
+        let mut buffer = String::new();
+
         loop {
             let mut data = [0 as u8; 50];
 
             match ptr.read(&mut data){
                 Ok(_s) => {
-                        let mut last = 0;
 
-                        for b in data.iter(){
-                            if *b == (0 as u8){
-                                break;
-                            }
-                            last += 1;
+                        let st =  str::from_utf8(&data).unwrap();
+                        
+                        buffer.push_str(st);
+
+                        let (parsed_jsons,rest) = json_pre_parser(&buffer);
+
+                        buffer = rest;
+
+                        for parsed_json in parsed_jsons.iter(){
+                            self.on_msg.send(parsed_json.clone()).unwrap(); 
                         }
 
-                       
-                        let st =  str::from_utf8(&data[0..last]).unwrap();
-
-                        println!("Message from server -> {}",st);
-
-                        if let Ok(_) = self.on_msg.send(String::from(st)){
-                            
-                        }
+                               
                     }
                 _ => (),
             }

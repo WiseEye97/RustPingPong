@@ -24,12 +24,21 @@ impl InnerListener{
                             if let Ok(mut foo) = self.game.lock() {
                                 let (client_side,opp_side) =
                                     match body.side.as_ref(){
-                                        "Up" => {
+                                        "up" => {
                                             (Side::Up,Side::Down)
                                         },
                                         _ => {(Side::Down,Side::Up)}
                                     };
+                                println!("Initializing game");    
                                 foo.init(client_side,opp_side,500,500,crate::game::Dimensions {width : 50,height : 10});
+                            }
+                        },
+                        "move_req" => {
+                            let body = TcpInMessage::get_body::<MoveRequest>(encoded);
+                            if let Ok(mut foo) = self.game.lock() {
+                                foo.opponent.set_new_pos(body.pos);
+                            }else{
+                                println!("Cant move");
                             }
                         },
                         _ => {
