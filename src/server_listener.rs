@@ -3,6 +3,8 @@ use std::sync::{Arc,Mutex};
 use std::sync::mpsc;
 use std::thread;
 use crate::types::*;
+use std::time::{Duration};
+use std::thread::sleep;  
 
 struct InnerListener{
     game : Arc<Mutex<Game>>,
@@ -29,7 +31,8 @@ impl InnerListener{
                                         },
                                         _ => {(Side::Down,Side::Up)}
                                     };
-                                println!("Initializing game");    
+                                println!("Initializing game");
+                                sleep(Duration::new(5, 0));
                                 foo.init(client_side,opp_side,500,500,crate::game::Dimensions {width : 50,height : 10});
                             }
                         },
