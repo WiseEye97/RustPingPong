@@ -104,7 +104,7 @@ fn main() {
     srv_listener.start();
 
     //connections to server one for sending one for recieving
-    let (mut wrapper,mut wrapper_sender) = create_tcp(String::from("127.0.0.1:7878"),tx,rx2).unwrap();
+    let (mut wrapper,mut wrapper_sender) = create_tcp(String::from("192.168.0.105:7878"),tx,rx2).unwrap();
 
     //start listening
     wrapper.start();
